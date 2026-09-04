@@ -1,0 +1,53 @@
+{
+  "name": "milestone-cabinetry-server",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "dev": "cross-env NODE_ENV=local DOTENV_CONFIG_PATH=.env.local nodemon -r tsconfig-paths/register src/server.ts",
+    "staging": "cross-env NODE_ENV=staging DOTENV_CONFIG_PATH=.env.staging nodemon -r tsconfig-paths/register src/server.ts",
+    "build": "tsc && tsc-alias",
+    "start:staging": "cross-env NODE_ENV=staging node dist/server.js",
+    "start": "cross-env NODE_ENV=production node dist/server.js",
+    "db:check": "cross-env NODE_ENV=local DOTENV_CONFIG_PATH=.env.local ts-node -r tsconfig-paths/register src/scripts/checkDatabase.ts",
+    "db:setup": "docker compose -f docker-compose.db.yml up -d",
+    "db:down": "docker compose -f docker-compose.db.yml down",
+    "lint": "eslint --ext .ts src",
+    "lint:fix": "eslint --ext .ts src --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "migrate:local": "cross-env NODE_ENV=local sequelize-cli db:migrate --env local",
+    "migrate:staging": "cross-env NODE_ENV=staging sequelize-cli db:migrate --env staging",
+    "migrate:prod": "cross-env NODE_ENV=production sequelize-cli db:migrate --env production",
+    "seed:local": "cross-env NODE_ENV=local sequelize-cli db:seed:all --env local"
+  },
+  "dependencies": {
+    "@aws-sdk/rds-signer": "^3.1125.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "pg": "^8.20.0",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.8"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.6.0",
+    "cross-env": "^10.1.0",
+    "eslint": "^10.2.1",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.5.0",
+    "nodemon": "^3.1.14",
+    "prettier": "^3.8.3",
+    "sequelize-cli": "^6.6.3",
+    "ts-node": "^10.9.2",
+    "tsc-alias": "^1.8.16",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "^8.59.0"
+  }
+}

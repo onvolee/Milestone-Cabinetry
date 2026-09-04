@@ -1,0 +1,9 @@
+node_modules
+.next
+.open-next
+.sst
+dist
+build
+coverage
+*.lock
+sst-env.d.ts

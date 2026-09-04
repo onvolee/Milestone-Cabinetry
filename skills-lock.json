@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "amazon-aurora-postgresql": {
+      "source": "aws/agent-toolkit-for-aws",
+      "sourceType": "github",
+      "skillPath": "skills/specialized-skills/database-skills/amazon-aurora-postgresql/SKILL.md",
+      "computedHash": "0657f40e6bb16ce0eaf0e1f9243aecb1fdef0e5ce6bd053140be156185bfc989"
+    },
+    "rds-oss": {
+      "source": "aws/agent-toolkit-for-aws",
+      "sourceType": "github",
+      "skillPath": "skills/specialized-skills/database-skills/rds-oss/SKILL.md",
+      "computedHash": "2eb4a41737249e0f7f470247f3c8d04b4eb40084a73561583d5b0b102c545100"
+    }
+  }
+}
