@@ -1,0 +1,106 @@
+name: Server Staging Deploy
+
+on:
+  push:
+    tags:
+      - 'milestone-staging-v*'
+
+  workflow_dispatch:
+    inputs:
+      bootstrap_only:
+        description: 'Only build and push the first image; do not deploy ECS'
+        required: true
+        type: boolean
+        default: false
+
+concurrency:
+  group: server-staging-deploy
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: milestone-server
+  ECS_CLUSTER: milestone-learning
+  ECS_SERVICE: milestone-server
+  ECS_TASK_DEFINITION: milestone-server
+  ECS_CONTAINER_NAME: server
+
+jobs:
+  deploy-server:
+    name: Build and deploy server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: milestone-server-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && \
+             [ "${{ inputs.bootstrap_only }}" = "true" ]; then
+            IMAGE_TAG="bootstrap-${GITHUB_RUN_ID}"
+          else
+            IMAGE_TAG="${GITHUB_SHA}"
+          fi
+
+          IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+
+          if aws ecr describe-images \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-ids imageTag="$IMAGE_TAG" \
+            >/dev/null 2>&1; then
+            echo "Image already exists; reusing $IMAGE_URI"
+          else
+            docker build \
+              --platform linux/amd64 \
+              --tag "$IMAGE_URI" \
+              ./server
+
+            docker push "$IMAGE_URI"
+          fi
+
+          echo "image=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+
+      - name: Download current ECS task definition
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.bootstrap_only == false }}
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition "$ECS_TASK_DEFINITION" \
+            --query taskDefinition \
+            > "$RUNNER_TEMP/task-definition.json"
+
+      - name: Insert image into task definition
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.bootstrap_only == false }}
+        id: task-definition
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ runner.temp }}/task-definition.json
+          container-name: ${{ env.ECS_CONTAINER_NAME }}
+          image: ${{ steps.build-image.outputs.image }}
+
+      - name: Deploy ECS task definition
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.bootstrap_only == false }}
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-definition.outputs.task-definition }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          service: ${{ env.ECS_SERVICE }}
+          wait-for-service-stability: true
