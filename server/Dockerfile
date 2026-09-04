@@ -1,16 +1,35 @@
-FROM --platform=linux/amd64 node:22-alpine
+FROM node:22-alpine AS base
 
 WORKDIR /app
 
+FROM base AS build
+
 COPY package.json yarn.lock ./
 
-RUN corepack enable && corepack prepare yarn@1.22.22 --activate
 RUN yarn install --frozen-lockfile --non-interactive
 
-COPY . .
+COPY tsconfig.json ./
+COPY src ./src
 
 RUN yarn build
 
-EXPOSE 3000
+FROM base AS runtime
 
-CMD ["yarn", "start"]
+ENV NODE_ENV=staging
+ENV PORT=3001
+
+COPY package.json yarn.lock ./
+
+RUN yarn install \
+    --frozen-lockfile \
+    --production=true \
+    --non-interactive \
+    && yarn cache clean
+
+COPY --from=build --chown=node:node /app/dist ./dist
+
+USER node
+
+EXPOSE 3001
+
+CMD ["node", "dist/server.js"]
