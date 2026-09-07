@@ -16,7 +16,6 @@
       "Sid": "InspectAndDriftStacks",
       "Effect": "Allow",
       "Action": [
-        "cloudformation:DescribeStackDriftDetectionStatus",
         "cloudformation:DescribeStackEvents",
         "cloudformation:DescribeStackResourceDrifts",
         "cloudformation:DescribeStackResources",
@@ -31,9 +30,12 @@
       ]
     },
     {
-      "Sid": "ReadCloudFormationTypeConfigurationForDrift",
+      "Sid": "ReadGlobalCloudFormationDriftMetadata",
       "Effect": "Allow",
-      "Action": "cloudformation:BatchDescribeTypeConfigurations",
+      "Action": [
+        "cloudformation:BatchDescribeTypeConfigurations",
+        "cloudformation:DescribeStackDriftDetectionStatus"
+      ],
       "Resource": "*"
     },
     {
