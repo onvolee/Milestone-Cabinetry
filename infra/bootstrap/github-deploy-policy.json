@@ -1,0 +1,63 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AssumeCdkBootstrapRoles",
+      "Effect": "Allow",
+      "Action": "sts:AssumeRole",
+      "Resource": [
+        "arn:aws:iam::441176049535:role/cdk-hnb659fds-deploy-role-441176049535-us-east-1",
+        "arn:aws:iam::441176049535:role/cdk-hnb659fds-file-publishing-role-441176049535-us-east-1",
+        "arn:aws:iam::441176049535:role/cdk-hnb659fds-image-publishing-role-441176049535-us-east-1",
+        "arn:aws:iam::441176049535:role/cdk-hnb659fds-lookup-role-441176049535-us-east-1"
+      ]
+    },
+    {
+      "Sid": "InspectAndDriftStacks",
+      "Effect": "Allow",
+      "Action": [
+        "cloudformation:DescribeStackDriftDetectionStatus",
+        "cloudformation:DescribeStackEvents",
+        "cloudformation:DescribeStackResources",
+        "cloudformation:DescribeStacks",
+        "cloudformation:DetectStackDrift",
+        "cloudformation:GetTemplate"
+      ],
+      "Resource": [
+        "arn:aws:cloudformation:us-east-1:441176049535:stack/MilestoneServerStagingFoundation/*",
+        "arn:aws:cloudformation:us-east-1:441176049535:stack/MilestoneServerStagingApplication/*"
+      ]
+    },
+    {
+      "Sid": "RunDatabaseBootstrapTask",
+      "Effect": "Allow",
+      "Action": "ecs:RunTask",
+      "Resource": "arn:aws:ecs:us-east-1:441176049535:task-definition/milestone-server-staging-database-bootstrap:*",
+      "Condition": {
+        "ArnEquals": {
+          "ecs:cluster": "arn:aws:ecs:us-east-1:441176049535:cluster/milestone-server-staging"
+        }
+      }
+    },
+    {
+      "Sid": "InspectAndStopDatabaseBootstrapTask",
+      "Effect": "Allow",
+      "Action": [
+        "ecs:DescribeTasks",
+        "ecs:StopTask"
+      ],
+      "Resource": "arn:aws:ecs:us-east-1:441176049535:task/milestone-server-staging/*"
+    },
+    {
+      "Sid": "PassDatabaseBootstrapRoles",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::441176049535:role/MilestoneServerStagingFoundation-DatabaseBootstrapTaskDef*",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "ecs-tasks.amazonaws.com"
+        }
+      }
+    }
+  ]
+}

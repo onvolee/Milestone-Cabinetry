@@ -12,6 +12,7 @@
 **/*.pem
 **/*.key
 **/*.crt
+!server/.certs/rds-global-bundle.pem
 
 # Build output and framework caches
 **/dist/
@@ -22,6 +23,8 @@
 **/.open-next/
 **/.sst/
 **/out/
+**/cdk.out/
+**/cdk-outputs-*.json
 **/.turbo/
 **/.vercel/
 

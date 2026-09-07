@@ -1,0 +1,49 @@
+name: Server Infrastructure PR Check
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/server-infra-pr-check.yml'
+      - '.github/workflows/server-staging-deploy.yml'
+      - 'infra/**'
+      - 'server/.certs/**'
+      - 'server/.dockerignore'
+      - 'server/Dockerfile'
+      - 'server/db/bootstrap/**'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate CDK infrastructure
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: infra/yarn.lock
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile --non-interactive
+
+      - name: Typecheck
+        run: yarn typecheck
+
+      - name: Lint
+        run: yarn lint
+
+      - name: Test
+        run: yarn test
+
+      - name: Synthesize
+        run: yarn cdk synth --strict

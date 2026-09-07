@@ -27,9 +27,27 @@ RUN yarn install \
     && yarn cache clean
 
 COPY --from=build --chown=node:node /app/dist ./dist
+COPY --chown=node:node .certs/rds-global-bundle.pem ./.certs/rds-global-bundle.pem
 
 USER node
 
 EXPOSE 3001
 
 CMD ["node", "dist/server.js"]
+
+FROM runtime AS db-bootstrap
+
+USER root
+
+RUN apk add --no-cache postgresql-client
+
+COPY .certs/rds-global-bundle.pem /certs/rds-global-bundle.pem
+COPY db/bootstrap/01-rds-roles.sql /bootstrap/01-rds-roles.sql
+COPY db/bootstrap/run.mjs /app/bootstrap/run.mjs
+
+ENV PGSSLMODE=verify-full
+ENV PGSSLROOTCERT=/certs/rds-global-bundle.pem
+
+USER node
+
+ENTRYPOINT ["node", "/app/bootstrap/run.mjs"]

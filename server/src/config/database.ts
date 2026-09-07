@@ -82,3 +82,7 @@ export const initializeDatabase = async () => {
   await sequelize.authenticate()
   return true
 }
+
+export const closeDatabase = async () => {
+  await sequelize?.close()
+}

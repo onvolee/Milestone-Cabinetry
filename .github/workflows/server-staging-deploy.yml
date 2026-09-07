@@ -4,14 +4,7 @@ on:
   push:
     tags:
       - 'milestone-staging-v*'
-
   workflow_dispatch:
-    inputs:
-      bootstrap_only:
-        description: 'Only build and push the first image; do not deploy ECS'
-        required: true
-        type: boolean
-        default: false
 
 concurrency:
   group: server-staging-deploy
@@ -23,84 +16,61 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPOSITORY: milestone-server
-  ECS_CLUSTER: milestone-learning
-  ECS_SERVICE: milestone-server
-  ECS_TASK_DEFINITION: milestone-server
-  ECS_CONTAINER_NAME: server
 
 jobs:
   deploy-server:
-    name: Build and deploy server
+    name: Deploy server with CDK
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: infra/yarn.lock
+
+      - name: Install infrastructure dependencies
+        run: yarn install --frozen-lockfile --non-interactive
+
+      - name: Validate infrastructure
+        run: |
+          yarn typecheck
+          yarn lint
+          yarn test
+
       - name: Configure AWS credentials with OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          role-session-name: milestone-server-deploy
+          role-session-name: milestone-server-cdk-deploy
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Login to Amazon ECR
-        id: ecr-login
-        uses: aws-actions/amazon-ecr-login@v2
+      - name: Verify deployment account
+        run: test "$(aws sts get-caller-identity --query Account --output text)" = "441176049535"
 
-      - name: Build and push Docker image
-        id: build-image
-        env:
-          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+      - name: Synthesize and inspect changes
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && \
-             [ "${{ inputs.bootstrap_only }}" = "true" ]; then
-            IMAGE_TAG="bootstrap-${GITHUB_RUN_ID}"
-          else
-            IMAGE_TAG="${GITHUB_SHA}"
-          fi
+          yarn cdk synth --strict
+          yarn cdk diff --strict
 
-          IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+      - name: Deploy foundation
+        run: yarn deploy:foundation
 
-          if aws ecr describe-images \
-            --repository-name "$ECR_REPOSITORY" \
-            --image-ids imageTag="$IMAGE_TAG" \
-            >/dev/null 2>&1; then
-            echo "Image already exists; reusing $IMAGE_URI"
-          else
-            docker build \
-              --platform linux/amd64 \
-              --tag "$IMAGE_URI" \
-              ./server
+      - name: Initialize database roles
+        run: yarn bootstrap:database
 
-            docker push "$IMAGE_URI"
-          fi
+      - name: Deploy application
+        run: yarn deploy:application --exclusively
 
-          echo "image=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+      - name: Verify health endpoint
+        run: yarn health
 
-      - name: Download current ECS task definition
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.bootstrap_only == false }}
-        run: |
-          aws ecs describe-task-definition \
-            --task-definition "$ECS_TASK_DEFINITION" \
-            --query taskDefinition \
-            > "$RUNNER_TEMP/task-definition.json"
-
-      - name: Insert image into task definition
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.bootstrap_only == false }}
-        id: task-definition
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
-        with:
-          task-definition: ${{ runner.temp }}/task-definition.json
-          container-name: ${{ env.ECS_CONTAINER_NAME }}
-          image: ${{ steps.build-image.outputs.image }}
-
-      - name: Deploy ECS task definition
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.bootstrap_only == false }}
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
-        with:
-          task-definition: ${{ steps.task-definition.outputs.task-definition }}
-          cluster: ${{ env.ECS_CLUSTER }}
-          service: ${{ env.ECS_SERVICE }}
-          wait-for-service-stability: true
+      - name: Check CloudFormation drift
+        run: yarn drift
