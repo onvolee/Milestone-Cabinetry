@@ -52,7 +52,7 @@
       "Sid": "PassDatabaseBootstrapRoles",
       "Effect": "Allow",
       "Action": "iam:PassRole",
-      "Resource": "arn:aws:iam::441176049535:role/MilestoneServerStagingFoundation-DatabaseBootstrapTaskDef*",
+      "Resource": "arn:aws:iam::441176049535:role/MilestoneServerStagingFou-DatabaseBootstrapTaskDefi-*",
       "Condition": {
         "StringEquals": {
           "iam:PassedToService": "ecs-tasks.amazonaws.com"
