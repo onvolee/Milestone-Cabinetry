@@ -18,15 +18,23 @@
       "Action": [
         "cloudformation:DescribeStackDriftDetectionStatus",
         "cloudformation:DescribeStackEvents",
+        "cloudformation:DescribeStackResourceDrifts",
         "cloudformation:DescribeStackResources",
         "cloudformation:DescribeStacks",
         "cloudformation:DetectStackDrift",
+        "cloudformation:DetectStackResourceDrift",
         "cloudformation:GetTemplate"
       ],
       "Resource": [
         "arn:aws:cloudformation:us-east-1:441176049535:stack/MilestoneServerStagingFoundation/*",
         "arn:aws:cloudformation:us-east-1:441176049535:stack/MilestoneServerStagingApplication/*"
       ]
+    },
+    {
+      "Sid": "ReadCloudFormationTypeConfigurationForDrift",
+      "Effect": "Allow",
+      "Action": "cloudformation:BatchDescribeTypeConfigurations",
+      "Resource": "*"
     },
     {
       "Sid": "RunDatabaseBootstrapTask",
